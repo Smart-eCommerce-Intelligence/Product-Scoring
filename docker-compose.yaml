@@ -1,0 +1,28 @@
+# docker-compose.yaml
+services:
+  analyzer:
+    build:
+      context: . 
+      dockerfile: Dockerfile # Specify the Dockerfile name
+    container_name: product_analyzer_app
+    environment:
+      - DB_HOST=${DB_HOST}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME_SHOPIFY=${DB_NAME_SHOPIFY}
+      - DB_NAME_WOOCOMMERCE=${DB_NAME_WOOCOMMERCE}
+      - DB_NAME_ANALYSIS=${DB_NAME_ANALYSIS}
+      - TOP_K_OVERALL=${TOP_K_OVERALL}
+      - FLAGSHIP_PER_STORE=${FLAGSHIP_PER_STORE}
+      - WEIGHT_AVAILABILITY=${WEIGHT_AVAILABILITY}
+      - WEIGHT_PRICE=${WEIGHT_PRICE}
+      - DB_BATCH_SIZE=${DB_BATCH_SIZE}
+    networks:
+      - app_analysis_network 
+    # If you want this to run after scrapers, you might use 'depends_on'
+
+
+networks:
+  app_analysis_network:
+    driver: bridge
+    name: product_analysis_network
