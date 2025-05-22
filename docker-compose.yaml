@@ -1,12 +1,12 @@
-# docker-compose.yaml
 services:
   analyzer:
     build:
       context: . 
-      dockerfile: Dockerfile # Specify the Dockerfile name
-    container_name: product_analyzer_app
+      dockerfile: Dockerfile
+    image: spamfake2022/product-analyzer:latest   
+    container_name: product_analyzer_service
     environment:
-      - DB_HOST=${DB_HOST}
+      - DB_HOST=${DB_HOST} # Will take value from .env or be empty if not in .env
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_NAME_SHOPIFY=${DB_NAME_SHOPIFY}
@@ -17,12 +17,13 @@ services:
       - WEIGHT_AVAILABILITY=${WEIGHT_AVAILABILITY}
       - WEIGHT_PRICE=${WEIGHT_PRICE}
       - DB_BATCH_SIZE=${DB_BATCH_SIZE}
+      - FLASK_PORT=${ANALYZER_FLASK_PORT:-5003} # Use a specific var from .env or default
+    ports:
+      - "5003:5003" # If FLASK_PORT is 5003, maps host 5003 to container 5003
     networks:
-      - app_analysis_network 
-    # If you want this to run after scrapers, you might use 'depends_on'
-
+      - app_network
 
 networks:
-  app_analysis_network:
+  app_network:
     driver: bridge
     name: product_analysis_network

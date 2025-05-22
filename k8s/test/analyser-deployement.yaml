@@ -1,0 +1,14 @@
+# analyzer-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: product-analyzer-svc
+  labels:
+    app: product-analyzer
+spec:
+  type: LoadBalancer
+  selector:
+    app: product-analyzer
+  ports:
+  - port: 5003 
+    targetPort: 5003 

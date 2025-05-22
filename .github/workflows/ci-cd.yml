@@ -1,0 +1,26 @@
+name: CI/CD for Web-Scrapping
+
+on:
+  push:
+    branches:
+      - main # Or your default branch, e.g., master
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy-local:
+    runs-on: [self-hosted, linux, minikube-local] # Use the labels you defined!
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Apply K8s Shopify Scrapper Deployment
+        run: |
+          kubectl apply -f k8s/test/analyser-deployement.yaml
+
+      - name: Verify Deployments
+        run: |
+          kubectl get pods 
+          kubectl get services

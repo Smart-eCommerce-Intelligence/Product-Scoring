@@ -1,0 +1,115 @@
+# analyzer-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: product-analyzer
+  labels:
+    app: product-analyzer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: product-analyzer
+  template:
+    metadata:
+      labels:
+        app: product-analyzer
+    spec:
+      containers:
+      - name: analyzer-container
+        image: spamfake2022/product-analyzer:latest # Your analyzer image
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http # Named port
+          containerPort: 5003 # Port the Flask app listens on (from FLASK_PORT env)
+        env:
+        # --- Map Common DB Settings ---
+        - name: DB_HOST # ENV VAR inside container
+          valueFrom:
+            configMapKeyRef:
+              name: app-configs # Name of your ConfigMap
+              key: DB_HOST     # Key in ConfigMap
+        - name: DB_USER # ENV VAR inside container
+          valueFrom:
+            secretKeyRef:
+              name: mysql-credentials
+              key: username     
+        - name: DB_PASSWORD 
+          valueFrom:
+            secretKeyRef:
+              name: mysql-credentials # Name of the Secret
+              key: password        # Key in the Secret
+        # --- Map Analyzer-Specific DB Names ---
+        - name: DB_NAME_SHOPIFY # ENV VAR inside container (for --db_name_shopify)
+          valueFrom:
+            configMapKeyRef:
+              name: app-configs
+              key: DB_NAME_SHOPIFY # Key from ConfigMap
+        - name: DB_NAME_WOOCOMMERCE # ENV VAR inside container (for --db_name_woocommerce)
+          valueFrom:
+            configMapKeyRef:
+              name: app-configs
+              key: DB_NAME_WOOCOMMERCE # Key from ConfigMap
+        - name: DB_NAME_ANALYSIS # ENV VAR inside container (for --db_name_analysis)
+          valueFrom:
+            configMapKeyRef:
+              name: app-configs
+              key: DB_NAME_ANALYSIS # Key from ConfigMap
+        # --- Map Analysis Parameters ---
+        - name: TOP_K_OVERALL # ENV VAR inside container
+          valueFrom:
+            configMapKeyRef:
+              name: app-configs
+              key: ANALYZER_PARAM_TOP_K_OVERALL
+        - name: FLAGSHIP_PER_STORE # ENV VAR inside container
+          valueFrom:
+            configMapKeyRef:
+              name: app-configs
+              key: ANALYZER_PARAM_FLAGSHIP_PER_STORE
+        - name: WEIGHT_AVAILABILITY # ENV VAR inside container
+          valueFrom:
+            configMapKeyRef:
+              name: app-configs
+              key: ANALYZER_PARAM_WEIGHT_AVAILABILITY
+        - name: WEIGHT_PRICE # ENV VAR inside container
+          valueFrom:
+            configMapKeyRef:
+              name: app-configs
+              key: ANALYZER_PARAM_WEIGHT_PRICE
+        - name: DB_BATCH_SIZE # ENV VAR inside container
+          valueFrom:
+            configMapKeyRef:
+              name: app-configs
+              key: ANALYZER_PARAM_DB_BATCH_SIZE
+       
+        - name: FLASK_PORT # ENV VAR inside container
+          valueFrom:
+            configMapKeyRef:
+              name: app-configs
+              key: FLASK_PORT_ANALYZER # Key in ConfigMap
+        resources:
+          requests:
+            memory: "70Mi"
+            cpu: "10m"
+          limits:
+            memory: "250Mi"
+            cpu: "500m"
+
+
+---
+# analyzer-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: product-analyzer-svc
+  labels:
+    app: product-analyzer
+spec:
+  type: ClusterIP
+  selector:
+    app: product-analyzer
+  ports:
+  - name: http-analyzer
+    protocol: TCP
+    port: 80 
+    targetPort: http 
