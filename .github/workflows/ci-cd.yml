@@ -10,8 +10,7 @@ on:
 
 jobs:
   build-and-deploy-local:
-    runs-on: [self-hosted, linux, minikube-local] # Use the labels you defined!
-
+    runs-on: [self-hosted, Linux, minikube-local] # Capital 'L' for Linux
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
