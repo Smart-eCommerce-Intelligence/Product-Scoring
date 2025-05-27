@@ -117,7 +117,7 @@ def fetch_shopify_data(conn):
     df = pd.DataFrame()
     if not conn: return df
     try:
-        query = "SELECT product_url, title, vendor, price, availability, description, category AS product_category, store_name AS source_store_name FROM products WHERE price IS NOT NULL AND title IS NOT NULL"
+        query = "SELECT product_url, title, vendor, price, availability, description, category AS product_category, store_name AS source_store_name FROM products WHERE price IS NOT NULL AND title IS NOT NULL AND price != 0"
         df = pd.read_sql(query, conn)
         if not df.empty:
             df['source_platform'] = 'Shopify'
@@ -133,7 +133,7 @@ def fetch_woocommerce_data(conn):
     df = pd.DataFrame()
     if not conn: return df
     try:
-        query = "SELECT product_url, title, price, tag AS product_tags, sku, category AS product_category FROM barefoot_products WHERE price IS NOT NULL AND title IS NOT NULL"
+        query = "SELECT product_url, title, price, tag AS product_tags, sku, category AS product_category FROM barefoot_products WHERE price IS NOT NULL AND title IS NOT NULL AND price != 0"
         df = pd.read_sql(query, conn)
         if not df.empty:
             df['source_platform'] = 'WooCommerce'

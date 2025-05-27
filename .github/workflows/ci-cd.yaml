@@ -1,0 +1,77 @@
+name: CI/CD for Product-Scoring
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  ANALYZER_IMAGE_REPO: spamfake2022/product-analyzer
+
+jobs:
+  build-and-push-analyzer:
+    name: Build and Push Product Analyzer Image
+    runs-on: [self-hosted, Linux, minikube-local]
+    # No 'working-directory' needed at job level if paths are relative to repo root
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Product Analyzer Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./ # Context is the root of Product-Scoring repo
+          file: ./Dockerfile # Assumes Dockerfile is at Product-Scoring/Dockerfile
+          push: true
+          tags: ${{ env.ANALYZER_IMAGE_REPO }}:latest
+
+  deploy-analyzer-to-minikube:
+    name: Deploy Product Analyzer to Minikube
+    runs-on: [self-hosted, Linux, minikube-local]
+    needs: build-and-push-analyzer
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Ensure Kubernetes context is Minikube
+        run: |
+          kubectl config use-context kfp-cluster
+          kubectl config current-context
+
+      # APPLY SHARED/COMMON RESOURCES (ASSUMING COPIES EXIST IN THIS REPO'S k8s FOLDER)
+      - name: Apply K8s Global ConfigMap
+        run: kubectl apply -f ./k8s/app-configmap.yaml # Must exist in Product-Scoring/k8s/
+      - name: Apply K8s Global DB Credentials Secret
+        run: kubectl apply -f ./k8s/db-credentials.yaml # Must exist in Product-Scoring/k8s/
+
+      - name: Apply K8s Product Analyzer Deployment and Service
+        run: |
+          echo "Applying Product Analyzer K8s manifests (pulling from ${{ env.ANALYZER_IMAGE_REPO }}:latest)..."
+          kubectl apply -f ./k8s/analyser-deployement.yaml # Path relative to Product-Scoring repo root
+
+      - name: Wait for Product Analyzer deployment
+        run: |
+          echo "Waiting for Product Analyzer deployment..."
+          kubectl rollout status deployment/product-analyzer --timeout=180s -n default
+          kubectl wait --for=condition=available deployment/product-analyzer --timeout=180s -n default
+
+      - name: Verify Product Analyzer Deployment
+        run: |
+          echo "--- Pods ---"
+          kubectl get pods -l app=product-analyzer -n default
+          echo "--- Services ---"
+          kubectl get services -l app=product-analyzer -n default
+          echo "--- Describe Pods for Image Check ---"
+          kubectl describe pods -l app=product-analyzer -n default
