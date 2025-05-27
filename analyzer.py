@@ -468,6 +468,44 @@ def run_product_analysis_logic():
     
     # We can proceed even if one of the source DBs is down, df_ will be empty
     create_analysis_tables(conn_analysis)
+    
+     # --- NEW: Delete all data from analysis tables ---
+    analysis_cursor = None
+    try:
+        analysis_cursor = conn_analysis.cursor()
+        tables_to_clear = [
+            "scored_products", 
+            "top_k_products_overall", 
+            "flagship_products_by_store", 
+            "store_rankings"
+        ]
+        print("\n(Analysis Logic) Clearing previous analysis data...")
+        for table_name in tables_to_clear:
+            try:
+                analysis_cursor.execute(f"DELETE FROM {table_name};")
+                # For TRUNCATE, which is faster and resets auto_increment (if applicable):
+                # analysis_cursor.execute(f"TRUNCATE TABLE {table_name};")
+                print(f"Cleared data from table: {table_name} ({analysis_cursor.rowcount} rows affected).")
+            except mysql.connector.Error as table_err:
+                # If table doesn't exist (e.g., first run), create_analysis_tables should have handled it.
+                # If deletion still fails, log it.
+                print(f"Warning: Could not clear table {table_name}: {table_err}. It might not exist or have other issues.")
+        conn_analysis.commit()
+        print("(Analysis Logic) Previous analysis data cleared successfully.")
+    except mysql.connector.Error as err:
+        print(f"CRITICAL ERROR: Failed to clear analysis tables: {err}. Aborting analysis to prevent inconsistent data.")
+        if analysis_cursor: analysis_cursor.close()
+        if conn_analysis and conn_analysis.is_connected(): conn_analysis.close()
+        return {"status": "error", "message": f"Failed to clear analysis tables: {err}"}
+    except Exception as e_del:
+        print(f"CRITICAL UNEXPECTED ERROR: Failed to clear analysis tables: {e_del}. Aborting analysis.")
+        if analysis_cursor: analysis_cursor.close()
+        if conn_analysis and conn_analysis.is_connected(): conn_analysis.close()
+        return {"status": "error", "message": f"Unexpected error clearing analysis tables: {e_del}"}
+    finally:
+        if analysis_cursor: analysis_cursor.close() # Close cursor used for deletion
+    # --- End of NEW deletion logic ---
+
 
     df_shopify_raw = fetch_shopify_data(conn_shopify)
     df_woocommerce_raw = fetch_woocommerce_data(conn_woocommerce)
